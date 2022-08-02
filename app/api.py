@@ -1,12 +1,10 @@
-from functools import cache
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import HttpUrl
 from fastapi.responses import RedirectResponse
 from .db import get_db
 from .models import URLResponse, URLShortner
 from .utils import shorten_url, get_uuid
-from sqlalchemy.orm import Session
-from sqlalchemy import select, update, delete, insert
+from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import DBAPIError
 from typing import List
