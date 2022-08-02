@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy import (Column, String)
 
 class URLShortner(Base):
-    __tablename__ = "test12"
+    __tablename__ = "async_test"
     id = Column(String(32), primary_key=True)
     original_url = Column(String(255))
     short_url = Column(String(7), unique=True)
