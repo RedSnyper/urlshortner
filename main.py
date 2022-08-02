@@ -26,13 +26,11 @@ settings = Settings()
 
 
 DATABASE_URL = f"mysql+aiomysql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}"
-
-# DATABASE_URL = "pymysql://postgres:admin123@localhost:5432/urlshortner"
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
 urls = sqlalchemy.Table(
-    "test",
+    "v1_test",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.String(32), primary_key = True),
     sqlalchemy.Column("original_url", sqlalchemy.String(255)),
