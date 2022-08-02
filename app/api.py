@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Body, Depends, HTTPException, status
-from pydantic import AnyUrl, HttpUrl
+from pydantic import HttpUrl
 from fastapi.responses import RedirectResponse
 from .db import get_db, URLShortner, URLResponse
 from .shorten_url import shorten_url
 from sqlalchemy.orm import Session
 from typing import List
+from fastapi import (APIRouter, 
+                    Body, 
+                    Depends, 
+                    HTTPException, 
+                    status)
+
 
 router = APIRouter(
     tags = ['URL Shortner']
