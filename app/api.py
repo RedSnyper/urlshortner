@@ -3,7 +3,7 @@ from pydantic import HttpUrl
 from fastapi.responses import RedirectResponse
 from .db import get_db
 from .models import URLResponse, URLShortner
-from .utils import shorten_url, get_uuid
+from .utils import get_url_code, get_uuid
 from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import DBAPIError
@@ -13,6 +13,7 @@ router = APIRouter(
     tags = ['URL Shortner']
 )
 redirect = APIRouter()
+root_url = 'http://localhost:8000/'
 
 @router.post('/shorten',response_model=URLResponse)
 async def short_url(db: AsyncSession = Depends(get_db),url: HttpUrl = Body(...,embed=True)):
@@ -21,13 +22,14 @@ async def short_url(db: AsyncSession = Depends(get_db),url: HttpUrl = Body(...,e
     if result.first():  #guaranted to be only 1
         record = await db.execute(query)
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, 
-        detail=f"entry for the shortened key already exists: {record.scalar().short_url}")
-    short_url = await shorten_url(url)
+        detail=f"entry for the url already exists: {record.scalar().short_url}")
     id = await get_uuid()
-    short_url = await shorten_url(url)
+    code = await get_url_code(url)
+    short_url = f'{root_url}{code}'
     query = insert(URLShortner).values(
         id = id,
         original_url = url,
+        code = code,
         short_url = short_url
     )
     try:
@@ -38,7 +40,7 @@ async def short_url(db: AsyncSession = Depends(get_db),url: HttpUrl = Body(...,e
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
         detail="Something went wrong")
     finally:
-        return URLResponse(id = id, original_url=url, 
+        return URLResponse(id = id, original_url=url, code=code,
                     short_url=short_url)
 
 @router.get('/all', response_model=List[URLResponse])
@@ -49,9 +51,9 @@ async def shortened_urls(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code = status.HTTP_200_OK, detail = "No entries yet")
     return result.scalars().all()
 
-@redirect.get('/{short_url}')
-async def redirect_link(short_url: str, db: AsyncSession = Depends(get_db)):
-    query = select(URLShortner).filter(URLShortner.short_url == short_url)
+@redirect.get('/{code}')
+async def redirect_link(code: str, db: AsyncSession = Depends(get_db)):
+    query = select(URLShortner).filter(URLShortner.code == code)
     result = await db.execute(query)
     if not result.first():
         raise HTTPException(
@@ -59,6 +61,5 @@ async def redirect_link(short_url: str, db: AsyncSession = Depends(get_db)):
             detail = 'The link does not exist')
     print(result.first())
     result = await db.execute(query)
-
     return RedirectResponse(url=result.scalar().original_url)
 
