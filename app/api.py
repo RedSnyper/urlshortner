@@ -1,9 +1,14 @@
+from functools import cache
 from fastapi import APIRouter, Body, Depends, HTTPException, status
-from pydantic import AnyUrl, HttpUrl
+from pydantic import HttpUrl
 from fastapi.responses import RedirectResponse
-from .db import get_db, URLShortner, URLResponse
-from .shorten_url import shorten_url
+from .db import get_db
+from .models import URLResponse, URLShortner
+from .utils import shorten_url, get_uuid
 from sqlalchemy.orm import Session
+from sqlalchemy import select, update, delete, insert
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import DBAPIError
 from typing import List
 
 router = APIRouter(
@@ -12,31 +17,50 @@ router = APIRouter(
 redirect = APIRouter()
 
 @router.post('/shorten',response_model=URLResponse)
-async def short_url(db: Session = Depends(get_db),url: HttpUrl = Body(...,embed=True)):
-    url_exists: URLShortner = db.query(URLShortner).filter(URLShortner.url == url).first()
-    if url_exists:
+async def short_url(db: AsyncSession = Depends(get_db),url: HttpUrl = Body(...,embed=True)):
+    query = select(URLShortner).filter(URLShortner.original_url == url)
+    result = await db.execute(query)
+    if result.first():  #guaranted to be only 1
+        record = await db.execute(query)
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, 
-        detail=f"entry for the shortened key already exists: {url_exists.short_url}")
+        detail=f"entry for the shortened key already exists: {record.scalar().short_url}")
     short_url = await shorten_url(url)
-    obj = URLShortner(url= url, short_url = short_url)
-    db.add(obj)
-    db.commit()
-    return obj
-
+    id = await get_uuid()
+    short_url = await shorten_url(url)
+    query = insert(URLShortner).values(
+        id = id,
+        original_url = url,
+        short_url = short_url
+    )
+    try:
+        await db.execute(query)
+        await db.commit()
+    except DBAPIError as e : 
+        # logging.error(e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+        detail="Something went wrong")
+    finally:
+        return URLResponse(id = id, original_url=url, 
+                    short_url=short_url)
 
 @router.get('/all', response_model=List[URLResponse])
-def shortened_urls(db: Session = Depends(get_db)):
-    urls: URLShortner = db.query(URLShortner).all()
-    if not urls:
+async def shortened_urls(db: AsyncSession = Depends(get_db)):
+    query = select(URLShortner)
+    result =  await db.execute(query)
+    if not result:
         raise HTTPException(status_code = status.HTTP_200_OK, detail = "No entries yet")
-    return urls
+    return result.scalars().all()
 
 @redirect.get('/{short_url}')
-def redirect_link(short_url: str, db: Session = Depends(get_db)):
-    obj: URLShortner = db.query(URLShortner).filter(URLShortner.short_url == short_url).first()
-    if not obj:
+async def redirect_link(short_url: str, db: AsyncSession = Depends(get_db)):
+    query = select(URLShortner).filter(URLShortner.short_url == short_url)
+    result = await db.execute(query)
+    if not result.first():
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND, 
             detail = 'The link does not exist')
-    return RedirectResponse(url=obj.url)
+    print(result.first())
+    result = await db.execute(query)
+
+    return RedirectResponse(url=result.scalar().original_url)
 

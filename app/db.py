@@ -1,35 +1,19 @@
-import databases #for async support 
-from sqlalchemy import (Column, Integer, String, create_engine)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import DBAPIError
-from pydantic import BaseModel
+from typing import AsyncGenerator
+from .config import settings
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = 'sqlite:///urlshortner.db'
-engine = create_engine(DATABASE_URL, connect_args = {"check_same_thread": False})
+DATABASE_URL = f"mysql+aiomysql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}"
+engine = create_async_engine(DATABASE_URL, future=True)
 Base = declarative_base()
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+async_session = sessionmaker(
+    autoflush=False,
+    autocommit=False,
+    bind=engine,
+    expire_on_commit=False,
+    class_=AsyncSession)
 
-def get_db():
-    dbase = SessionLocal()
-    try:
-        yield dbase
-    except DBAPIError:
-        dbase.close()
-    finally:
-        dbase.close()
-        
 
-class URLShortner(Base):
-    __tablename__ = "shortned"
-    id = Column(Integer, primary_key=True)
-    url = Column(String(255))
-    short_url = Column(String(7), unique=True, index=True)
-
-class URLRequest(BaseModel):
-    url: str
-
-class URLResponse(URLRequest):
-    short_url: str
-    class Config:
-        orm_mode = True
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
+        yield session
