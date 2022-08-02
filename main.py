@@ -7,6 +7,7 @@ import logging
 from fastapi import FastAPI, status, HTTPException, Body
 from fastapi.responses import RedirectResponse
 from sqlalchemy.exc import DBAPIError
+from sqlalchemy.ext.declarative import declarative_base
 from pydantic import BaseModel, HttpUrl, BaseSettings
 from typing import List
 
@@ -28,9 +29,10 @@ settings = Settings()
 DATABASE_URL = f"mysql+aiomysql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}"
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
+Base = declarative_base()
 
 urls = sqlalchemy.Table(
-    "v1_test",
+    "v1.1_test",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.String(32), primary_key = True),
     sqlalchemy.Column("original_url", sqlalchemy.String(255)),
