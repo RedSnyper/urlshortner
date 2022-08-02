@@ -10,7 +10,7 @@ from app.config import settings
 # access to the values within the .ini file in use.
 config = context.config
 config.set_main_option("sqlalchemy.url",
-                        f"mysql+aiomysql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}"
+                        f"mysql+pymysql://{settings.database_username}:{settings.database_password}@{settings.database_hostname}:{settings.database_port}/{settings.database_name}"
                        )
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -21,6 +21,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
