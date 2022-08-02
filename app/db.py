@@ -32,3 +32,5 @@ class URLResponse(URLRequest):
     short_url: str
     class Config:
         orm_mode = True
+
+# Base.metadata.create_all(bind=engine) after alembic this is not needed
