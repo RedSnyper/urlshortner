@@ -7,7 +7,7 @@ from .utils import get_url_code, get_uuid
 from sqlalchemy import select, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import DBAPIError
-from typing import List
+from typing import List, Tuple
 
 router = APIRouter(
     tags = ['URL Shortner']
@@ -17,12 +17,12 @@ root_url = 'http://localhost:8000/'
 
 @router.post('/shorten',response_model=URLResponse)
 async def short_url(db: AsyncSession = Depends(get_db),url: HttpUrl = Body(...,embed=True)):
-    query = select(URLShortner).filter(URLShortner.original_url == url)
-    result = await db.execute(query)
-    if result.first():  #guaranted to be only 1
-        record = await db.execute(query)
+    query = select(URLShortner).where(URLShortner.original_url == url)
+    result:List[Tuple[URLShortner]]=list(await db.execute(query))
+    print(result)
+    if result:  #guaranted to be only 1 result as the database only stores unique results
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, 
-        detail=f"entry for the url already exists: {record.scalar().short_url}")
+        detail=f"entry for the url already exists: {result[0][0].short_url}")
     id = await get_uuid()
     code = await get_url_code(url)
     short_url = f'{root_url}{code}'
@@ -37,8 +37,10 @@ async def short_url(db: AsyncSession = Depends(get_db),url: HttpUrl = Body(...,e
         await db.commit()
     except DBAPIError as e : 
         # logging.error(e)
+        #rollback here
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
         detail="Something went wrong")
+    
     finally:
         return URLResponse(id = id, original_url=url, code=code,
                     short_url=short_url)
@@ -47,19 +49,15 @@ async def short_url(db: AsyncSession = Depends(get_db),url: HttpUrl = Body(...,e
 async def shortened_urls(db: AsyncSession = Depends(get_db)):
     query = select(URLShortner)
     result =  await db.execute(query)
-    if not result:
-        raise HTTPException(status_code = status.HTTP_200_OK, detail = "No entries yet")
     return result.scalars().all()
 
 @redirect.get('/{code}')
 async def redirect_link(code: str, db: AsyncSession = Depends(get_db)):
     query = select(URLShortner).filter(URLShortner.code == code)
-    result = await db.execute(query)
-    if not result.first():
+    result:List[Tuple[URLShortner]] = list(await db.execute(query))
+    print(result)
+    if not result:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND, 
             detail = 'The link does not exist')
-    print(result.first())
-    result = await db.execute(query)
-    return RedirectResponse(url=result.scalar().original_url)
-
+    return RedirectResponse(url=result[0][0].original_url)

@@ -5,7 +5,7 @@ from sqlalchemy import (Column, String)
 class URLShortner(Base):
     __tablename__ = "url_srt"
     id = Column(String(32), primary_key=True)
-    original_url = Column(String(255))
+    original_url = Column(String(255),unique = True)
     code = Column(String(7), unique = True)
     short_url = Column(String(255))
 
