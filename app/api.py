@@ -51,6 +51,7 @@ async def shortened_urls(db: AsyncSession = Depends(get_db)):
     result =  await db.execute(query)
     return result.scalars().all()
 
+#TODO: add some caching technique for most requested short url requests
 @redirect.get('/{code}')
 async def redirect_link(code: str, db: AsyncSession = Depends(get_db)):
     query = select(URLShortner).filter(URLShortner.code == code)
