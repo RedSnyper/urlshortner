@@ -5,11 +5,11 @@ Steps before running the app:
 ### 1. Clone the project  
 
 project structure:
-  -urlshortner(root)
-    - app
-    - migrations
-    - requirements.txt
-    - main.py
+    -urlshortner(root)
+      - app
+      - migrations
+      - requirements.txt
+      - main.py
 
 ### 2. Create and activate virtual environment on root directory terminal:
 
