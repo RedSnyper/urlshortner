@@ -19,7 +19,6 @@ root_url = 'http://localhost:8000/'
 async def short_url(db: AsyncSession = Depends(get_db),url: HttpUrl = Body(...,embed=True)):
     query = select(URLShortner).where(URLShortner.original_url == url)
     result:List[Tuple[URLShortner]]=list(await db.execute(query))
-    print(result)
     if result:  #guaranted to be only 1 result as the database only stores unique results
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, 
         detail=f"entry for the url already exists: {result[0][0].short_url}")
@@ -56,7 +55,6 @@ async def shortened_urls(db: AsyncSession = Depends(get_db)):
 async def redirect_link(code: str, db: AsyncSession = Depends(get_db)):
     query = select(URLShortner).filter(URLShortner.code == code)
     result:List[Tuple[URLShortner]] = list(await db.execute(query))
-    print(result)
     if not result:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND, 
